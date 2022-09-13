@@ -145,16 +145,16 @@ func (c *cache) GetWithExpiration(k K) (interface{}, time.Time, bool) {
 }
 
 // Delete an item from the cache. Does nothing if the key is not in the cache.
-func (c *cache) Delete(k string) {
+func (c *cache) Remove(k K) {
 	c.Lock()
-	v, evicted := c.delete(k)
+	v, evicted := c.remove(k)
 	c.Unlock()
 	if evicted {
 		c.onEvicted(k, v)
 	}
 }
 
-func (c *cache) delete(k K) (interface{}, bool) {
+func (c *cache) remove(k K) (interface{}, bool) {
 	idx, found := c.indices[k]
 	if !found {
 		return nil, false
@@ -173,23 +173,23 @@ func (c *cache) delete(k K) (interface{}, bool) {
 }
 
 // Delete all expired items from the cache.
-func (c *cache) DeleteExpired() {
+func (c *cache) Tidy() {
 	var ks []interface{}
 	var vs []interface{}
 
 	now := time.Now().UnixNano()
-	c.RLock()
+	c.Lock()
 	for _, v := range c.items {
 		// "Inlining" of expired
 		if v.Expiration > 0 && now > v.Expiration {
-			_, evicted := c.delete(v.key)
+			_, evicted := c.remove(v.key)
 			if evicted {
 				ks = append(ks, v.key)
 				vs = append(vs, v.value)
 			}
 		}
 	}
-	c.RUnlock()
+	c.Unlock()
 	for i := range ks {
 		c.onEvicted(ks[i], vs[i])
 	}
@@ -225,7 +225,7 @@ func (c *cache) Keys() []interface{} {
 
 // Returns the number of items in the cache. This may include items that have
 // expired, but have not yet been cleaned up.
-func (c *cache) Count() int {
+func (c *cache) Len() int {
 	c.RLock()
 	n := len(c.items)
 	c.RUnlock()
@@ -254,7 +254,7 @@ func (c *cache) run(interval time.Duration) {
 	for {
 		select {
 		case <-ticker.C:
-			c.DeleteExpired()
+			c.Tidy()
 		case <-c.stop:
 			ticker.Stop()
 			return

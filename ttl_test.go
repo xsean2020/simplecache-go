@@ -127,7 +127,7 @@ func TestStorePointerToStruct(t *testing.T) {
 func TestDelete(t *testing.T) {
 	tc := New(DefaultExpiration, 0)
 	tc.AddTTL("foo", "bar", DefaultExpiration)
-	tc.Delete("foo")
+	tc.Remove("foo")
 	x, found := tc.Get("foo")
 	if found {
 		t.Error("foo was found, but it should have been deleted")
@@ -142,7 +142,7 @@ func TestItemCount(t *testing.T) {
 	tc.AddTTL("foo", "1", DefaultExpiration)
 	tc.AddTTL("bar", "2", DefaultExpiration)
 	tc.AddTTL("baz", "3", DefaultExpiration)
-	if n := tc.Count(); n != 3 {
+	if n := tc.Len(); n != 3 {
 		t.Errorf("Item count is not 3: %d", n)
 	}
 }
@@ -181,7 +181,7 @@ func TestOnEvicted(t *testing.T) {
 		}
 		tc.AddTTL("bar", 4, DefaultExpiration)
 	})
-	tc.Delete("foo")
+	tc.Remove("foo")
 	x, _ := tc.Get("bar")
 	if !works {
 		t.Error("works bool not true")
@@ -375,7 +375,7 @@ func BenchmarkCacheSetDelete(b *testing.B) {
 	b.StartTimer()
 	for i := 0; i < b.N; i++ {
 		tc.AddTTL("foo", "bar", DefaultExpiration)
-		tc.Delete("foo")
+		tc.Remove("foo")
 	}
 }
 
@@ -402,7 +402,7 @@ func BenchmarkCacheSetDeleteSingleLock(b *testing.B) {
 
 		tc.AddTTL("foo", "bar", DefaultExpiration)
 		tc.Lock()
-		tc.delete("foo")
+		tc.remove("foo")
 		tc.Unlock()
 	}
 }
@@ -431,7 +431,7 @@ func BenchmarkDeleteExpiredLoop(b *testing.B) {
 	// tc.Unlock()
 	b.StartTimer()
 	for i := 0; i < b.N; i++ {
-		tc.DeleteExpired()
+		tc.Tidy()
 	}
 }
 

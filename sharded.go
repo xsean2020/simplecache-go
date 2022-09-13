@@ -79,13 +79,13 @@ func (sc *shardedCache) Get(k string) (interface{}, bool) {
 	return sc.bucket(k).Get(k)
 }
 
-func (sc *shardedCache) Delete(k string) {
-	sc.bucket(k).Delete(k)
+func (sc *shardedCache) Remove(k string) {
+	sc.bucket(k).Remove(k)
 }
 
-func (sc *shardedCache) DeleteExpired() {
+func (sc *shardedCache) Tidy() {
 	for _, v := range sc.cs {
-		v.DeleteExpired()
+		v.Tidy()
 	}
 }
 
@@ -146,7 +146,7 @@ func (sc *shardedCache) run(interval time.Duration) {
 		select {
 		case <-ticker.C:
 			for _, c := range sc.cs {
-				c.DeleteExpired()
+				c.Tidy()
 			}
 		case <-sc.stop:
 			ticker.Stop()
