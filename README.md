@@ -1,4 +1,4 @@
-# A go mem cache base on heap
+# Simple Go Mem Cache  With ttl and LRU 
 
 ### example
 ```
