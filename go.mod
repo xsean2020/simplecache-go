@@ -1,3 +1,3 @@
-module github.com/xsean2020/gocache
+module github.com/xsean2020/simplecache-go
 
-go 1.14
+go 1.18
