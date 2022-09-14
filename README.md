@@ -1,5 +1,7 @@
 # simplecache
 
+clone from https://github.com/patrickmn/go-cache.git
+
 simplecache is an in-memory key:value store/cache 
 
 Any object can be stored, for a given duration or forever, and the cache can be
