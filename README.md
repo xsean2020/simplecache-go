@@ -66,7 +66,9 @@ func main() {
 ```
 
 
-```go generic example
+### Generic  usage
+
+```go 
 import (
 	"fmt"
 	simplecache "github.com/xsean2020/simplecache-go/generic"
