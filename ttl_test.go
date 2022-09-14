@@ -31,9 +31,9 @@ func TestCache(t *testing.T) {
 		t.Error("Getting C found value that shouldn't exist:", c)
 	}
 
-	tc.AddTTL("a", 1, DefaultExpiration)
-	tc.AddTTL("b", "b", DefaultExpiration)
-	tc.AddTTL("c", 3.5, DefaultExpiration)
+	tc.AddWithTTL("a", 1, DefaultExpiration)
+	tc.AddWithTTL("b", "b", DefaultExpiration)
+	tc.AddWithTTL("c", 3.5, DefaultExpiration)
 
 	x, found := tc.Get("a")
 	if !found {
@@ -70,10 +70,10 @@ func TestCacheTimes(t *testing.T) {
 	var found bool
 
 	tc := New(50*time.Millisecond, 1*time.Millisecond)
-	tc.AddTTL("a", 1, DefaultExpiration)
-	tc.AddTTL("b", 2, NoExpiration)
-	tc.AddTTL("c", 3, 20*time.Millisecond)
-	tc.AddTTL("d", 4, 70*time.Millisecond)
+	tc.AddWithTTL("a", 1, DefaultExpiration)
+	tc.AddWithTTL("b", 2, NoExpiration)
+	tc.AddWithTTL("c", 3, 20*time.Millisecond)
+	tc.AddWithTTL("d", 4, 70*time.Millisecond)
 
 	<-time.After(25 * time.Millisecond)
 	_, found = tc.Get("c")
@@ -106,7 +106,7 @@ func TestCacheTimes(t *testing.T) {
 
 func TestStorePointerToStruct(t *testing.T) {
 	tc := New(DefaultExpiration, 0)
-	tc.AddTTL("foo", &TestStruct{Num: 1}, DefaultExpiration)
+	tc.AddWithTTL("foo", &TestStruct{Num: 1}, DefaultExpiration)
 	x, found := tc.Get("foo")
 	if !found {
 		t.Fatal("*TestStruct was not found for foo")
@@ -126,7 +126,7 @@ func TestStorePointerToStruct(t *testing.T) {
 
 func TestDelete(t *testing.T) {
 	tc := New(DefaultExpiration, 0)
-	tc.AddTTL("foo", "bar", DefaultExpiration)
+	tc.AddWithTTL("foo", "bar", DefaultExpiration)
 	tc.Remove("foo")
 	x, found := tc.Get("foo")
 	if found {
@@ -139,9 +139,9 @@ func TestDelete(t *testing.T) {
 
 func TestItemCount(t *testing.T) {
 	tc := New(DefaultExpiration, 0)
-	tc.AddTTL("foo", "1", DefaultExpiration)
-	tc.AddTTL("bar", "2", DefaultExpiration)
-	tc.AddTTL("baz", "3", DefaultExpiration)
+	tc.AddWithTTL("foo", "1", DefaultExpiration)
+	tc.AddWithTTL("bar", "2", DefaultExpiration)
+	tc.AddWithTTL("baz", "3", DefaultExpiration)
 	if n := tc.Len(); n != 3 {
 		t.Errorf("Item count is not 3: %d", n)
 	}
@@ -149,8 +149,8 @@ func TestItemCount(t *testing.T) {
 
 func TestFlush(t *testing.T) {
 	tc := New(DefaultExpiration, 0)
-	tc.AddTTL("foo", "bar", DefaultExpiration)
-	tc.AddTTL("baz", "yes", DefaultExpiration)
+	tc.AddWithTTL("foo", "bar", DefaultExpiration)
+	tc.AddWithTTL("baz", "yes", DefaultExpiration)
 	tc.Purge()
 	x, found := tc.Get("foo")
 	if found {
@@ -170,7 +170,7 @@ func TestFlush(t *testing.T) {
 
 func TestOnEvicted(t *testing.T) {
 	tc := New(DefaultExpiration, 0)
-	tc.AddTTL("foo", 3, DefaultExpiration)
+	tc.AddWithTTL("foo", 3, DefaultExpiration)
 	if tc.onEvicted != nil {
 		t.Fatal("tc.onEvicted is not nil")
 	}
@@ -179,7 +179,7 @@ func TestOnEvicted(t *testing.T) {
 		if k == "foo" && v.(int) == 3 {
 			works = true
 		}
-		tc.AddTTL("bar", 4, DefaultExpiration)
+		tc.AddWithTTL("bar", 4, DefaultExpiration)
 	})
 	tc.Remove("foo")
 	x, _ := tc.Get("bar")
@@ -202,7 +202,7 @@ func BenchmarkCacheGetNotExpiring(b *testing.B) {
 func benchmarkCacheGet(b *testing.B, exp time.Duration) {
 	b.StopTimer()
 	tc := New(exp, 0)
-	tc.AddTTL("foo", "bar", DefaultExpiration)
+	tc.AddWithTTL("foo", "bar", DefaultExpiration)
 	b.StartTimer()
 	for i := 0; i < b.N; i++ {
 		tc.Get("foo")
@@ -263,7 +263,7 @@ func BenchmarkCacheGetConcurrentNotExpiring(b *testing.B) {
 func benchmarkCacheGetConcurrent(b *testing.B, exp time.Duration) {
 	b.StopTimer()
 	tc := New(exp, 0)
-	tc.AddTTL("foo", "bar", DefaultExpiration)
+	tc.AddWithTTL("foo", "bar", DefaultExpiration)
 	wg := new(sync.WaitGroup)
 	workers := runtime.NumCPU()
 	each := b.N / workers
@@ -323,7 +323,7 @@ func benchmarkCacheGetManyConcurrent(b *testing.B, exp time.Duration) {
 	for i := 0; i < n; i++ {
 		k := "foo" + strconv.Itoa(i)
 		keys[i] = k
-		tc.AddTTL(k, "bar", DefaultExpiration)
+		tc.AddWithTTL(k, "bar", DefaultExpiration)
 	}
 	each := b.N / n
 	wg := new(sync.WaitGroup)
@@ -353,7 +353,7 @@ func benchmarkCacheSet(b *testing.B, exp time.Duration) {
 	tc := New(exp, 0)
 	b.StartTimer()
 	for i := 0; i < b.N; i++ {
-		tc.AddTTL("foo", "bar", DefaultExpiration)
+		tc.AddWithTTL("foo", "bar", DefaultExpiration)
 	}
 }
 
@@ -374,7 +374,7 @@ func BenchmarkCacheSetDelete(b *testing.B) {
 	tc := New(DefaultExpiration, 0)
 	b.StartTimer()
 	for i := 0; i < b.N; i++ {
-		tc.AddTTL("foo", "bar", DefaultExpiration)
+		tc.AddWithTTL("foo", "bar", DefaultExpiration)
 		tc.Remove("foo")
 	}
 }
@@ -400,7 +400,7 @@ func BenchmarkCacheSetDeleteSingleLock(b *testing.B) {
 	b.StartTimer()
 	for i := 0; i < b.N; i++ {
 
-		tc.AddTTL("foo", "bar", DefaultExpiration)
+		tc.AddWithTTL("foo", "bar", DefaultExpiration)
 		tc.Lock()
 		tc.remove("foo")
 		tc.Unlock()
@@ -425,7 +425,7 @@ func BenchmarkDeleteExpiredLoop(b *testing.B) {
 	tc := New(5*time.Minute, 0)
 
 	for i := 0; i < 100000; i++ {
-		tc.AddTTL(strconv.Itoa(i), "bar", DefaultExpiration)
+		tc.AddWithTTL(strconv.Itoa(i), "bar", DefaultExpiration)
 	}
 	// tc.Lock(
 	// tc.Unlock()
@@ -453,11 +453,11 @@ func TestGetWithExpiration(t *testing.T) {
 		t.Error("Getting C found value that shouldn't exist:", c)
 	}
 
-	tc.AddTTL("a", 1, DefaultExpiration)
-	tc.AddTTL("b", "b", DefaultExpiration)
-	tc.AddTTL("c", 3.5, DefaultExpiration)
-	tc.AddTTL("d", 1, NoExpiration)
-	tc.AddTTL("e", 1, 50*time.Millisecond)
+	tc.AddWithTTL("a", 1, DefaultExpiration)
+	tc.AddWithTTL("b", "b", DefaultExpiration)
+	tc.AddWithTTL("c", 3.5, DefaultExpiration)
+	tc.AddWithTTL("d", 1, NoExpiration)
+	tc.AddWithTTL("e", 1, 50*time.Millisecond)
 
 	x, expiration, found := tc.GetWithExpiration("a")
 	if !found {

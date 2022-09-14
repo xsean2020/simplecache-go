@@ -68,14 +68,14 @@ func (sc *shardedCache) bucket(k K) *cache {
 }
 
 func (sc *shardedCache) AddTTL(k K, x interface{}, d time.Duration) {
-	sc.bucket(k).AddTTL(k, x, d)
+	sc.bucket(k).AddWithTTL(k, x, d)
 }
 
-func (sc *shardedCache) Add(k string, x interface{}) {
+func (sc *shardedCache) Add(k K, x interface{}) {
 	sc.bucket(k).Add(k, x)
 }
 
-func (sc *shardedCache) Get(k string) (interface{}, bool) {
+func (sc *shardedCache) Get(k K) (interface{}, bool) {
 	return sc.bucket(k).Get(k)
 }
 

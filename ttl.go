@@ -40,7 +40,7 @@ type cache struct {
 // Add an item to the cache, replacing any existing item. If the duration is 0
 // (DefaultExpiration), the cache's default expiration time is used. If it is -1
 // (NoExpiration), the item never expires.
-func (c *cache) AddTTL(k K, x interface{}, d time.Duration) {
+func (c *cache) AddWithTTL(k K, x interface{}, d time.Duration) {
 	// "Inlining" of set
 	var e int64
 	if d == DefaultExpiration {
@@ -64,7 +64,7 @@ func (c *cache) AddTTL(k K, x interface{}, d time.Duration) {
 	c.Unlock()
 }
 
-func (c *cache) setTTL(k K, x interface{}, d time.Duration) {
+func (c *cache) setWithTTL(k K, x interface{}, d time.Duration) {
 	var e int64
 	if d == DefaultExpiration {
 		d = c.defaultExpiration
@@ -86,10 +86,18 @@ func (c *cache) setTTL(k K, x interface{}, d time.Duration) {
 
 // Add an item to the cache, replacing any existing item, using the default
 // expiration.
-func (c *cache) Add(k string, x interface{}) {
+func (c *cache) Add(k, x interface{}) {
 	c.Lock()
-	c.setTTL(k, x, DefaultExpiration)
+	c.setWithTTL(k, x, DefaultExpiration)
 	c.Unlock()
+}
+
+// Checks if a key exists in cache
+func (c *cache) Contains(k K) bool {
+	c.RLock()
+	_, found := c.indices[k]
+	c.RUnlock()
+	return found
 }
 
 // Get an item from the cache. Returns the item or nil, and a bool indicating
@@ -210,7 +218,7 @@ func (c *cache) Keys() []interface{} {
 	c.RLock()
 	defer c.RUnlock()
 	now := time.Now().UnixNano()
-	for k, v := range c.items {
+	for _, v := range c.items {
 		// "Inlining" of Expired
 		if v.Expiration > 0 {
 			if now > v.Expiration {
@@ -218,7 +226,7 @@ func (c *cache) Keys() []interface{} {
 			}
 		}
 		// m[k] = v
-		ks = append(ks, k)
+		ks = append(ks, v.key)
 	}
 	return ks
 }
