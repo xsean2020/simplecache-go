@@ -4,6 +4,7 @@
 package generic
 
 import (
+	"math/rand"
 	"runtime"
 	"strconv"
 	"sync"
@@ -543,4 +544,36 @@ func TestGetWithExpiration(t *testing.T) {
 	if expiration.UnixNano() < time.Now().UnixNano() {
 		t.Error("expiration for e is in the past")
 	}
+}
+
+func FuzzAddAndRemove(f *testing.F) {
+
+	var mp = map[int]int64{}
+
+	rand.Seed(time.Now().Unix())
+	for i := 0; i < 100000; i++ {
+
+		mp[rand.Int()] = rand.Int63()
+
+	}
+
+	tc := New[int, int64](NoExpiration, 0)
+	for k, v := range mp {
+		f.Add(k, v) // Use f.Add to provide a seed corpus
+		tc.Add(k, v)
+	}
+
+	f.Fuzz(func(t *testing.T, orig int, value int64) {
+		tc.Add(orig, value)
+		tc.Remove(orig)
+
+		// t.Log(orig, value)
+		if x, ok := tc.Get(orig); ok {
+			t.Fatal("remove error", orig, x, tc.indices, tc.items)
+		}
+
+		if len(tc.items) != len(tc.indices) {
+			t.Fatal("len error", orig, value)
+		}
+	})
 }
