@@ -531,3 +531,30 @@ func TestGetWithExpiration(t *testing.T) {
 		t.Error("expiration for e is in the past")
 	}
 }
+
+func FuzzAddAndRemove(f *testing.F) {
+	test1 := []string{"Hello, world", " ", "!12345", "tedakdfkas"}
+	test2 := []string{"Hello, worlddfasdasf", "fdasfdasfd ", "!123dfasfad45", "tedfdafdasakdfkas"}
+
+	tc := New(NoExpiration, 0)
+	for i := range test1 {
+		f.Add(test1[i], test2[i]) // Use f.Add to provide a seed corpus
+		tc.Add(test1[i], test2[i])
+	}
+
+	// sz := len(test1)
+
+	f.Fuzz(func(t *testing.T, orig string, value string) {
+		tc.Add(orig, value)
+		tc.Remove(orig)
+
+		// t.Log(orig, value)
+		if x, ok := tc.Get(orig); ok {
+			t.Fatal("remove error", orig, x, tc.indices, tc.items)
+		}
+
+		if len(tc.items) != len(tc.indices) {
+			t.Fatal("len error")
+		}
+	})
+}
