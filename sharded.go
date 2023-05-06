@@ -2,7 +2,6 @@ package simplecache
 
 import (
 	"crypto/rand"
-	"fmt"
 	"math"
 	"math/big"
 	insecurerand "math/rand"
@@ -20,14 +19,14 @@ import (
 //
 // See cache_test.go for a few benchmarks.
 
-type ShardedCache struct {
-	*shardedCache
+type ShardedCache[V any] struct {
+	*shardedCache[V]
 }
 
-type shardedCache struct {
+type shardedCache[V any] struct {
 	seed uint32
 	m    uint32
-	cs   []*cache
+	cs   []*cache[string, V]
 	stop chan struct{}
 }
 
@@ -63,29 +62,29 @@ func djb33(seed uint32, k string) uint32 {
 	return d ^ (d >> 16)
 }
 
-func (sc *shardedCache) bucket(k K) *cache {
-	return sc.cs[djb33(sc.seed, fmt.Sprint(k))%sc.m]
+func (sc *shardedCache[V]) bucket(k string) *cache[string, V] {
+	return sc.cs[djb33(sc.seed, k)%sc.m]
 }
 
-func (sc *shardedCache) AddTTL(k K, x interface{}, d time.Duration) {
-	sc.bucket(k).AddWithTTL(k, x, d)
+func (sc *shardedCache[V]) Set(k string, x V, d time.Duration) {
+	sc.bucket(k).Set(k, x, d)
 }
 
-func (sc *shardedCache) Add(k K, x interface{}) {
-	sc.bucket(k).Add(k, x)
+func (sc *shardedCache[V]) Add(k string, x V, d time.Duration) error {
+	return sc.bucket(k).Add(k, x, d)
 }
 
-func (sc *shardedCache) Get(k K) (interface{}, bool) {
+func (sc *shardedCache[V]) Get(k string) (V, bool) {
 	return sc.bucket(k).Get(k)
 }
 
-func (sc *shardedCache) Remove(k string) {
-	sc.bucket(k).Remove(k)
+func (sc *shardedCache[V]) Delete(k string) {
+	sc.bucket(k).Delete(k)
 }
 
-func (sc *shardedCache) Tidy() {
+func (sc *shardedCache[V]) DeleteExpired() {
 	for _, v := range sc.cs {
-		v.Tidy()
+		v.DeleteExpired()
 	}
 }
 
@@ -94,27 +93,27 @@ func (sc *shardedCache) Tidy() {
 // fields of the items should be checked. Note that explicit synchronization
 // is needed to use a cache and its corresponding Items() return values at
 // the same time, as the maps are shared.
-func (sc *shardedCache) Keys() []interface{} {
-	var ks []interface{}
+func (sc *shardedCache[V]) Keys() []string {
+	var ks []string
 	for _, v := range sc.cs {
 		ks = append(ks, v.Keys()...)
 	}
 	return ks
 }
 
-func (sc *shardedCache) Purge() {
+func (sc *shardedCache[V]) Purge() {
 	for _, v := range sc.cs {
 		v.Purge()
 	}
 }
 
-func (sc *shardedCache) Foreach(fn func(k, v interface{})) {
+func (sc *shardedCache[V]) Foreach(fn func(k string, v V)) {
 	for _, v := range sc.cs {
 		v.Foreach(fn)
 	}
 }
 
-func newShardedCache(n int, de time.Duration) *shardedCache {
+func newShardedCache[V any](n int, de time.Duration) *shardedCache[V] {
 	max := big.NewInt(0).SetUint64(uint64(math.MaxUint32))
 	rnd, err := rand.Int(rand.Reader, max)
 	var seed uint32
@@ -124,29 +123,29 @@ func newShardedCache(n int, de time.Duration) *shardedCache {
 	} else {
 		seed = uint32(rnd.Uint64())
 	}
-	sc := &shardedCache{
+	sc := &shardedCache[V]{
 		seed: seed,
 		m:    uint32(n),
-		cs:   make([]*cache, n),
+		cs:   make([]*cache[string, V], n),
 		stop: make(chan struct{}),
 	}
 	for i := 0; i < n; i++ {
-		c := &cache{
+		c := &cache[string, V]{
 			defaultExpiration: de,
-			indices:           map[K]int{},
+			indices:           map[string]int{},
 		}
 		sc.cs[i] = c
 	}
 	return sc
 }
 
-func (sc *shardedCache) run(interval time.Duration) {
+func (sc *shardedCache[V]) run(interval time.Duration) {
 	ticker := time.NewTicker(interval)
 	for {
 		select {
 		case <-ticker.C:
 			for _, c := range sc.cs {
-				c.Tidy()
+				c.DeleteExpired()
 			}
 		case <-sc.stop:
 			ticker.Stop()
@@ -155,15 +154,15 @@ func (sc *shardedCache) run(interval time.Duration) {
 	}
 }
 
-func NewSharded(defaultExpiration, cleanupInterval time.Duration, shards int) *ShardedCache {
+func NewSharded[V any](defaultExpiration, cleanupInterval time.Duration, shards int) *ShardedCache[V] {
 	if defaultExpiration == 0 {
 		defaultExpiration = -1
 	}
-	sc := newShardedCache(shards, defaultExpiration)
-	SC := &ShardedCache{sc}
+	sc := newShardedCache[V](shards, defaultExpiration)
+	SC := &ShardedCache[V]{sc}
 	if cleanupInterval > 0 {
 		go sc.run(cleanupInterval)
-		runtime.SetFinalizer(SC, func(sc *ShardedCache) {
+		runtime.SetFinalizer(SC, func(sc *ShardedCache[V]) {
 			close(sc.stop)
 		})
 	}
