@@ -14,7 +14,7 @@ type TestStruct struct {
 }
 
 func TestCache(t *testing.T) {
-	tc := New[string, interface{}](DefaultExpiration, 0)
+	tc := New[string, interface{}](100, DefaultExpiration, 0)
 
 	a, found := tc.Get("a")
 	if found || a != nil {
@@ -69,7 +69,7 @@ func TestCache(t *testing.T) {
 func TestCacheTimes(t *testing.T) {
 	var found bool
 
-	tc := New[string, int](50*time.Millisecond, 1*time.Millisecond)
+	tc := New[string, int](100, 50*time.Millisecond, 1*time.Millisecond)
 	tc.Set("a", 1, DefaultExpiration)
 	tc.Set("b", 2, NoExpiration)
 	tc.Set("c", 3, 20*time.Millisecond)
@@ -105,7 +105,7 @@ func TestCacheTimes(t *testing.T) {
 }
 
 func TestStorePointerToStruct(t *testing.T) {
-	tc := New[string, *TestStruct](DefaultExpiration, 0)
+	tc := New[string, *TestStruct](100, DefaultExpiration, 0)
 	tc.Set("foo", &TestStruct{Num: 1}, DefaultExpiration)
 	foo, found := tc.Get("foo")
 	if !found {
@@ -123,7 +123,7 @@ func TestStorePointerToStruct(t *testing.T) {
 }
 
 func TestAdd(t *testing.T) {
-	tc := New[string, string](DefaultExpiration, 0)
+	tc := New[string, string](100, DefaultExpiration, 0)
 	err := tc.Add("foo", "bar", DefaultExpiration)
 	if err != nil {
 		t.Error("Couldn't add foo even though it shouldn't exist")
@@ -135,7 +135,7 @@ func TestAdd(t *testing.T) {
 }
 
 func TestDelete(t *testing.T) {
-	tc := New[string, string](DefaultExpiration, 0)
+	tc := New[string, string](100, DefaultExpiration, 0)
 	tc.Set("foo", "bar", DefaultExpiration)
 	tc.Delete("foo")
 	x, found := tc.Get("foo")
@@ -148,7 +148,7 @@ func TestDelete(t *testing.T) {
 }
 
 func TestItemCount(t *testing.T) {
-	tc := New[string, string](DefaultExpiration, 0)
+	tc := New[string, string](100, DefaultExpiration, 0)
 	tc.Set("foo", "1", DefaultExpiration)
 	tc.Set("bar", "2", DefaultExpiration)
 	tc.Set("baz", "3", DefaultExpiration)
@@ -158,7 +158,7 @@ func TestItemCount(t *testing.T) {
 }
 
 func TestFlush(t *testing.T) {
-	tc := New[string, string](DefaultExpiration, 0)
+	tc := New[string, string](100, DefaultExpiration, 0)
 	tc.Set("foo", "bar", DefaultExpiration)
 	tc.Set("baz", "yes", DefaultExpiration)
 	tc.Purge()
@@ -179,7 +179,7 @@ func TestFlush(t *testing.T) {
 }
 
 func TestOnEvicted(t *testing.T) {
-	tc := New[string, int](DefaultExpiration, 0)
+	tc := New[string, int](100, DefaultExpiration, 0)
 	tc.Set("foo", 3, DefaultExpiration)
 	if tc.onEvicted != nil {
 		t.Fatal("tc.onEvicted is not nil")
@@ -211,7 +211,7 @@ func BenchmarkCacheGetNotExpiring(b *testing.B) {
 
 func benchmarkCacheGet(b *testing.B, exp time.Duration) {
 	b.StopTimer()
-	tc := New[string, string](exp, 0)
+	tc := New[string, string](100, exp, 0)
 	tc.Set("foo", "bar", DefaultExpiration)
 	b.StartTimer()
 	for i := 0; i < b.N; i++ {
@@ -272,7 +272,7 @@ func BenchmarkCacheGetConcurrentNotExpiring(b *testing.B) {
 
 func benchmarkCacheGetConcurrent(b *testing.B, exp time.Duration) {
 	b.StopTimer()
-	tc := New[string, string](exp, 0)
+	tc := New[string, string](100, exp, 0)
 	tc.Set("foo", "bar", DefaultExpiration)
 	wg := new(sync.WaitGroup)
 	workers := runtime.NumCPU()
@@ -328,7 +328,7 @@ func benchmarkCacheGetManyConcurrent(b *testing.B, exp time.Duration) {
 	// in sharded_test.go.
 	b.StopTimer()
 	n := 10000
-	tc := New[string, string](exp, 0)
+	tc := New[string, string](100, exp, 0)
 	keys := make([]string, n)
 	for i := 0; i < n; i++ {
 		k := "foo" + strconv.Itoa(i)
@@ -360,7 +360,7 @@ func BenchmarkCacheSetNotExpiring(b *testing.B) {
 
 func benchmarkCacheSet(b *testing.B, exp time.Duration) {
 	b.StopTimer()
-	tc := New[string, string](exp, 0)
+	tc := New[string, string](100, exp, 0)
 	b.StartTimer()
 	for i := 0; i < b.N; i++ {
 		tc.Set("foo", "bar", DefaultExpiration)
@@ -381,7 +381,7 @@ func BenchmarkRWMutexMapSet(b *testing.B) {
 
 func BenchmarkCacheSetDelete(b *testing.B) {
 	b.StopTimer()
-	tc := New[string, string](DefaultExpiration, 0)
+	tc := New[string, string](100, DefaultExpiration, 0)
 	b.StartTimer()
 	for i := 0; i < b.N; i++ {
 		tc.Set("foo", "bar", DefaultExpiration)
@@ -406,7 +406,7 @@ func BenchmarkRWMutexMapSetDelete(b *testing.B) {
 
 func BenchmarkCacheSetDeleteSingleLock(b *testing.B) {
 	b.StopTimer()
-	tc := New[string, string](DefaultExpiration, 0)
+	tc := New[string, string](100, DefaultExpiration, 0)
 	b.StartTimer()
 	for i := 0; i < b.N; i++ {
 		tc.Lock()
@@ -431,7 +431,7 @@ func BenchmarkRWMutexMapSetDeleteSingleLock(b *testing.B) {
 
 func BenchmarkDeleteExpiredLoop(b *testing.B) {
 	b.StopTimer()
-	tc := New[string, string](5*time.Minute, 0)
+	tc := New[string, string](100, 5*time.Minute, 0)
 	tc.Lock()
 	for i := 0; i < 100000; i++ {
 		tc.set(strconv.Itoa(i), "bar", DefaultExpiration)
@@ -444,7 +444,7 @@ func BenchmarkDeleteExpiredLoop(b *testing.B) {
 }
 
 func TestGetWithExpiration(t *testing.T) {
-	tc := New[string, interface{}](DefaultExpiration, 0)
+	tc := New[string, interface{}](100, DefaultExpiration, 0)
 
 	a, expiration, found := tc.GetWithExpiration("a")
 	if found || a != nil || !expiration.IsZero() {

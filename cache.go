@@ -306,20 +306,21 @@ func (c *cache[K, V]) run(interval time.Duration) {
 	}
 }
 
-func newCache[K comparable, V any](de time.Duration) *cache[K, V] {
+func newCache[K comparable, V any](initcap int, de time.Duration) *cache[K, V] {
 	if de == 0 {
 		de = -1
 	}
 	c := &cache[K, V]{
 		defaultExpiration: de,
+		items:             make([]entry[K, V], 0, initcap),
 		indices:           make(map[K]int),
 		stop:              make(chan struct{}),
 	}
 	return c
 }
 
-func newCacheWithJanitor[K comparable, V any](de time.Duration, ci time.Duration) *Cache[K, V] {
-	c := newCache[K, V](de)
+func newCacheWithJanitor[K comparable, V any](initcap int, de time.Duration, ci time.Duration) *Cache[K, V] {
+	c := newCache[K, V](initcap, de)
 	C := &Cache[K, V]{c}
 	if ci > 0 {
 		go c.run(ci)
@@ -335,6 +336,6 @@ func newCacheWithJanitor[K comparable, V any](de time.Duration, ci time.Duration
 // the items in the cache never expire (by default), and must be deleted
 // manually. If the cleanup interval is less than one, expired items are not
 // deleted from the cache before calling c.DeleteExpired().
-func New[K comparable, V any](defaultExpiration, cleanupInterval time.Duration) *Cache[K, V] {
-	return newCacheWithJanitor[K, V](defaultExpiration, cleanupInterval)
+func New[K comparable, V any](initcap int, defaultExpiration, cleanupInterval time.Duration) *Cache[K, V] {
+	return newCacheWithJanitor[K, V](initcap, defaultExpiration, cleanupInterval)
 }
