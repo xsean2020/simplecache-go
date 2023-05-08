@@ -155,6 +155,26 @@ func (c *cache[K, V]) Get(k K) (v V, ok bool) {
 	return v, true
 }
 
+// GetPointer
+func (c *cache[K, V]) GetPointer(k K) (v *V, ok bool) {
+	c.RLock()
+	idx, found := c.indices[k]
+	if !found {
+		c.RUnlock()
+		return nil, false
+	}
+
+	if c.items[idx].Expiration > 0 {
+		if time.Now().UnixNano() > c.items[idx].Expiration {
+			c.RUnlock()
+			return v, false
+		}
+	}
+	v = &c.items[idx].value
+	c.RUnlock()
+	return v, true
+}
+
 // GetWithExpiration returns an item and its expiration time from the cache.
 // It returns the item or nil, the expiration time if one is set (if the item
 // never expires a zero value for time.Time is returned), and a bool indicating

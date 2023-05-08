@@ -66,6 +66,19 @@ func TestCache(t *testing.T) {
 	}
 }
 
+func TestGetPointer(t *testing.T) {
+	tc := New[string, int](100, 50*time.Millisecond, 1*time.Millisecond)
+	tc.Set("a", 1, DefaultExpiration)
+	a, _ := tc.GetPointer("a")
+	*a = 100
+	b, _ := tc.Get("a")
+	if b != 100 {
+		t.Fatal("error")
+
+	}
+
+}
+
 func TestCacheTimes(t *testing.T) {
 	var found bool
 

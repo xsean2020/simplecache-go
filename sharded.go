@@ -78,6 +78,10 @@ func (sc *shardedCache[V]) Get(k string) (V, bool) {
 	return sc.bucket(k).Get(k)
 }
 
+func (sc *shardedCache[V]) GetPointer(k string) (*V, bool) {
+	return sc.bucket(k).GetPointer(k)
+}
+
 func (sc *shardedCache[V]) Delete(k string) {
 	sc.bucket(k).Delete(k)
 }
