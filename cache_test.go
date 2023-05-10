@@ -456,6 +456,25 @@ func BenchmarkDeleteExpiredLoop(b *testing.B) {
 	}
 }
 
+func TestGetAndRewarnal(t *testing.T) {
+	tc := New[string, interface{}](100, 10*time.Second, time.Second)
+
+	tc.SetDefault("aaa", 100)
+	time.Sleep(8 * time.Second)
+	_, ok := tc.GetAndRenewal("aaa")
+	if !ok {
+		t.Fatal("error")
+	}
+
+	_, expiration, _ := tc.GetWithExpiration("aaa")
+
+	t.Log(time.Until(expiration).Seconds())
+	if time.Until(expiration).Seconds() < 5 {
+		t.Fatal("err", time.Until(expiration).Seconds())
+	}
+
+}
+
 func TestGetWithExpiration(t *testing.T) {
 	tc := New[string, interface{}](100, DefaultExpiration, 0)
 

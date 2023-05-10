@@ -8,9 +8,10 @@ import (
 )
 
 type entry[K comparable, V any] struct {
-	value      V
-	key        K
 	Expiration int64
+	sync.Mutex
+	key   K
+	value V
 }
 
 func (e *entry[K, V]) Expired() bool {
@@ -151,6 +152,28 @@ func (c *cache[K, V]) Get(k K) (v V, ok bool) {
 		}
 	}
 	v = c.items[idx].value
+	c.RUnlock()
+	return v, true
+}
+
+// Get renewal when lt defaltExpiration/2
+func (c *cache[K, V]) GetAndRenewal(k K) (v V, ok bool) {
+	c.RLock()
+	idx, found := c.indices[k]
+	if !found {
+		c.RUnlock()
+		return v, false
+	}
+
+	c.items[idx].Lock()
+	now := time.Now().UnixNano()
+	exp := int64(c.defaultExpiration / 3)
+	if c.items[idx].Expiration > 0 && c.items[idx].Expiration-now <= exp {
+		c.items[idx].Expiration += exp
+	}
+	c.items[idx].Unlock()
+	v = c.items[idx].value
+
 	c.RUnlock()
 	return v, true
 }
