@@ -475,40 +475,65 @@ func TestGetAndRewarnal(t *testing.T) {
 
 }
 
-func TestDeleteExpireation(t *testing.T) {
-	tc := New[string, interface{}](100, 10*time.Second, time.Second)
-	tc.Set("a", 1, 3*time.Minute)
+func TestCache_DeleteExpired(t *testing.T) {
+	// Create a cache with 3 items, one of which is already expired
+	cache := New[string, interface{}](100, 10*time.Second, time.Second)
+	cache.OnEvicted(func(k string, v interface{}) {
+		t.Log("delete", k, v)
+	})
 
-	tc.Set("b", 2, 10*time.Second)
+	cache.Add("a", 1, 3*time.Second)
+	cache.Add("b", 2, 10*time.Second)
+	cache.Add("c", 3, -1)
 
-	tc.Set("c", 3, 11*time.Second)
-	tc.Set("e", 4, 20*time.Second)
-	tc.Set("f", 5, -1)
-
-	time.Sleep(10 * time.Second)
-	tc.DeleteExpired()
-	if tc.Len() != 4 {
-		t.Fatal("count = 4", tc.Len())
+	// Verify that the cache has 3 items
+	if len(cache.items) != 3 {
+		t.Errorf("expected cache size to be 3, but got %d", len(cache.items))
 	}
 
-	if a, _ := tc.Get("a"); a.(int) != 1 {
-		t.Fatal("Error")
+	// Delete expired items
+	cache.DeleteExpired()
+
+	// Verify that the expired item was removed
+	if len(cache.items) != 3 {
+		t.Errorf("expected cache size to be 2 after deleting expired items, but got %d", len(cache.items))
 	}
 
-	if a, _ := tc.Get("e"); a.(int) != 4 {
-		t.Fatal("Error")
+	// Verify that the correct items were removed
+	if a, ok := cache.Get("a"); !ok || a != 1 {
+		t.Errorf("expected item 'a' to be deleted, but it was found in the cache")
+	}
+	if b, ok := cache.Get("b"); !ok || b != 2 {
+		t.Errorf("expected item 'b' to remain in the cache, but it was not found")
+	}
+	if c, ok := cache.Get("c"); !ok || c != 3 {
+		t.Errorf("expected item 'c' to be deleted, but it was found in the cache")
 	}
 
-	if a, _ := tc.Get("f"); a.(int) != 5 {
-		t.Fatal("Error")
+	// Add a new item that expires far in the future
+	cache.Add("e", 5, 30*time.Minute)
+
+	// Verify that the new item was added
+	if e, ok := cache.Get("e"); !ok || e != 5 {
+		t.Errorf("expected item 'e' to be added to the cache, but it was not found")
 	}
 
-	if _, ok := tc.Get("b"); ok {
-		t.Fatal("Expired")
+	// Wait for the second item to expire
+	time.Sleep(11 * time.Second)
+
+	// Delete expired items again
+	cache.DeleteExpired()
+
+	// Verify that the second item was removed
+	if len(cache.items) != 2 {
+		t.Errorf("expected cache size to be 1 after deleting expired items, but got %d", len(cache.items))
 	}
 
-	if _, ok := tc.Get("c"); !ok {
-		t.Fatal("Error")
+	if _, ok := cache.Get("b"); ok {
+		t.Errorf("expected item 'b' to be deleted, but it was found in the cache")
+	}
+	if e, ok := cache.Get("e"); !ok || e != 5 {
+		t.Errorf("expected item 'e' to remain in the cache, but it was not found")
 	}
 }
 
