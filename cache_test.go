@@ -475,6 +475,43 @@ func TestGetAndRewarnal(t *testing.T) {
 
 }
 
+func TestDeleteExpireation(t *testing.T) {
+	tc := New[string, interface{}](100, 10*time.Second, time.Second)
+	tc.Set("a", 1, 3*time.Minute)
+
+	tc.Set("b", 2, 10*time.Second)
+
+	tc.Set("c", 3, 11*time.Second)
+	tc.Set("e", 4, 20*time.Second)
+	tc.Set("f", 5, -1)
+
+	time.Sleep(10 * time.Second)
+	tc.DeleteExpired()
+	if tc.Len() != 4 {
+		t.Fatal("count = 4", tc.Len())
+	}
+
+	if a, _ := tc.Get("a"); a.(int) != 1 {
+		t.Fatal("Error")
+	}
+
+	if a, _ := tc.Get("e"); a.(int) != 4 {
+		t.Fatal("Error")
+	}
+
+	if a, _ := tc.Get("f"); a.(int) != 5 {
+		t.Fatal("Error")
+	}
+
+	if _, ok := tc.Get("b"); ok {
+		t.Fatal("Expired")
+	}
+
+	if _, ok := tc.Get("c"); !ok {
+		t.Fatal("Error")
+	}
+}
+
 func TestGetWithExpiration(t *testing.T) {
 	tc := New[string, interface{}](100, DefaultExpiration, 0)
 
