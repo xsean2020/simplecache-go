@@ -244,17 +244,17 @@ func (c *cache[K, V]) delete(k K) (v V, ok bool) {
 	if !found {
 		return
 	}
+
+	// target value
+	// copy
+	v = c.items[idx].value
+
 	n := len(c.indices) - 1
 	c.items[n], c.items[idx] = c.items[idx], c.items[n]
 	c.indices[c.items[idx].key] = idx
 	delete(c.indices, k)
-	if c.onEvicted != nil {
-		x := c.items[n]
-		c.items = c.items[:n]
-		return x.value, true
-	}
 	c.items = c.items[:n]
-	return v, false
+	return v, c.onEvicted != nil
 }
 
 // Delete all expired items from the cache.
@@ -263,18 +263,21 @@ func (c *cache[K, V]) DeleteExpired() {
 	var vs []V
 	now := time.Now().UnixNano()
 	c.Lock()
+	// Search expired data
 	for _, v := range c.items {
-		// "Inlining" of expired
 		if v.Expiration > 0 && now > v.Expiration {
-			_, evicted := c.delete(v.key)
-			if evicted {
-				ks = append(ks, v.key)
-				vs = append(vs, v.value)
-			}
+			ks = append(ks, v.key)
+		}
+	}
+
+	// delete
+	for _, k := range ks {
+		if v, evicted := c.delete(k); evicted {
+			vs = append(vs, v)
 		}
 	}
 	c.Unlock()
-	for i := range ks {
+	for i := range vs {
 		c.onEvicted(ks[i], vs[i])
 	}
 }
